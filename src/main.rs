@@ -12,7 +12,7 @@ fn main() {
     for stream in listener.incoming() {
         match stream {
             Ok(mut stream) => {
-                stream.write(b"+PONG\r\n").unwrap();
+                stream.write(&encode(Response::PONG)).unwrap();
             }
             Err(e) => {
                 println!("error: {}", e);
