@@ -1,7 +1,9 @@
 use std::net::TcpListener;
 
+use protocol::encode;
+use protocol::Response;
+
 fn main() {
-    // You can use print statements as follows for debugging, they'll be visible when running tests.
     println!("Logs from your program will appear here!");
 
     let listener = TcpListener::bind("127.0.0.1:6379").unwrap();
@@ -9,11 +11,29 @@ fn main() {
     for stream in listener.incoming() {
         match stream {
             Ok(_stream) => {
-                println!("accepted new connection");
+                println!("{}", encode(Response::PONG));
             }
             Err(e) => {
                 println!("error: {}", e);
             }
         }
+    }
+}
+
+mod protocol {
+    pub enum Response {
+        PONG
+    }
+
+    impl Response {
+        fn as_str(&self) -> &str {
+            match self {
+                Self::PONG => "PONG",
+            }
+        }
+    }
+
+    pub fn encode(cmd: Response) -> String {
+        return format!("+{}\r\n", cmd.as_str());
     }
 }
