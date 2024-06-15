@@ -1,3 +1,4 @@
+use std::io::Write;
 use std::net::TcpListener;
 
 use protocol::encode;
@@ -10,8 +11,8 @@ fn main() {
 
     for stream in listener.incoming() {
         match stream {
-            Ok(_stream) => {
-                println!("{}", encode(Response::PONG));
+            Ok(mut stream) => {
+                stream.write(b"+PONG\r\n").unwrap();
             }
             Err(e) => {
                 println!("error: {}", e);
@@ -33,7 +34,7 @@ mod protocol {
         }
     }
 
-    pub fn encode(cmd: Response) -> String {
-        return format!("+{}\r\n", cmd.as_str());
+    pub fn encode(cmd: Response) -> Vec<u8> {
+        return format!("+{}\r\n", cmd.as_str()).as_bytes().to_vec();
     }
 }
