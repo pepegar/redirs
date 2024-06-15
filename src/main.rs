@@ -1,4 +1,4 @@
-use protocol::{encode, Response};
+mod protocol;
 use tokio::net::TcpListener;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -18,7 +18,7 @@ async fn main() {
                             break;
                         }
 
-                        stream.write(&encode(Response::PONG)).await.unwrap();
+                        // stream.write(&protocol::encode(protocol::Response::PONG)).await.unwrap();
                     }
                 });
             },
@@ -26,23 +26,5 @@ async fn main() {
                 println!("error: {}", e);
             }
         }
-    }
-}
-
-mod protocol {
-    pub enum Response {
-        PONG
-    }
-
-    impl Response {
-        fn as_str(&self) -> &str {
-            match self {
-                Self::PONG => "PONG",
-            }
-        }
-    }
-
-    pub fn encode(cmd: Response) -> Vec<u8> {
-        return format!("+{}\r\n", cmd.as_str()).as_bytes().to_vec();
     }
 }
