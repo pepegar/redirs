@@ -1,3 +1,4 @@
+use std::io::Read;
 use std::io::Write;
 use std::net::TcpListener;
 
@@ -12,9 +13,15 @@ fn main() {
     for stream in listener.incoming() {
         match stream {
             Ok(mut stream) => {
-                let mut encoded = encode(Response::PONG);
-                encoded.extend(encode(Response::PONG));
-                stream.write(&encoded).unwrap();
+                let mut buf = [0; 512];
+
+                loop {
+                    let read_count = stream.read(&mut buf).unwrap();
+                    if read_count == 0 {
+                        break;
+                    }
+                    stream.write(&encode(Response::PONG)).unwrap();
+                }
             }
             Err(e) => {
                 println!("error: {}", e);
