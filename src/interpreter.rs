@@ -1,11 +1,13 @@
-use tokio::sync::RwLock;
-use std::{collections::HashMap, sync::Arc};
+use dashmap::DashMap;
+use tokio::sync::{mpsc::Sender, Mutex, RwLock};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 use anyhow::{Result, anyhow};
 use crate::commands::Command;
 
 #[derive(Clone)]
 pub struct Interpreter {
-    cache: Arc<RwLock<HashMap<String, String>>>
+    cache: Arc<DashMap<String, String>>,
+    tx: Arc<Mutex<Sender<(String, Duration)>>>,
 }
 
 impl Interpreter {
@@ -13,14 +15,21 @@ impl Interpreter {
         match cmd {
             Command::PING => Ok(Command::PONG),
             Command::ECHO(x) => Ok(Command::ECHO(x)),
-            Command::SET(key, value) => {
-                let mut map = self.cache.write().await;
-                map.insert(key, value);
+            Command::SET(key, value, expiry) => {
+                self.cache.insert(key.clone(), value);
+
+                match expiry {
+                    Some(millis) => {
+                        let tx = self.tx.lock().await;
+                        let _ = tx.send((key, Duration::from_millis(millis))).await;
+                    },
+                    None => (),
+                }
+                
                 Ok(Command::OK)
             },
             Command::GET(key) => {
-                let map = self.cache.read().await;
-                match map.get(key.as_str()) {
+                match self.cache.get(key.as_str()) {
                     Some(value) => Ok(Command::STR(value.to_owned())),
                     None => Ok(Command::NIL),
                 }
@@ -29,9 +38,10 @@ impl Interpreter {
         }
     }
 
-    pub(crate) fn new() -> Interpreter {
-        Interpreter{
-            cache: Arc::new(RwLock::new(HashMap::new()))
-        }
+    pub(crate) fn new(
+        cache: Arc<DashMap<String, String>>,
+        tx: Arc<Mutex<Sender<(String, Duration)>>>
+    ) -> Interpreter {
+        Interpreter{ cache, tx }
     }
 }
