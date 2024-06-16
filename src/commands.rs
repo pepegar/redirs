@@ -62,7 +62,7 @@ impl ToRESP for Command {
             Command::ECHO(x) => Ok(RESP::BulkString(x)),
             Command::OK => Ok(RESP::SimpleString("OK")),
             Command::STR(str) => Ok(RESP::BulkString(str)),
-            Command::NIL => Ok(RESP::Null),
+            Command::NIL => Ok(RESP::NullBulkString),
             x => Err(anyhow!("unexpected command in ToRESP: {:?}", x))
         }
     }

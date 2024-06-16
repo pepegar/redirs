@@ -12,6 +12,7 @@ pub enum RESP<'a> {
     SimpleString(&'a str),
     SimpleError(&'a str),
     BulkString(&'a str),
+    NullBulkString,
     Integer(i64),
     Array(Vec<RESP<'a>>),
     Null,
@@ -23,7 +24,7 @@ pub enum RESP<'a> {
     Map(HashMap<RESP<'a>, RESP<'a>>),
     Set(HashSet<RESP<'a>>),
     Push(Vec<RESP<'a>>),
-}
+ }
 
 impl <'a> PartialEq for RESP<'a> {
     fn eq(&self, other: &Self) -> bool {
@@ -31,6 +32,7 @@ impl <'a> PartialEq for RESP<'a> {
             (RESP::SimpleString(x), RESP::SimpleString(y)) => x == y,
             (RESP::SimpleError(x), RESP::SimpleError(y)) => x == y,
             (RESP::BulkString(x), RESP::BulkString(y)) => x == y,
+            (RESP::NullBulkString, RESP::NullBulkString) => true,
             (RESP::Integer(x), RESP::Integer(y)) => x == y,
             (RESP::Array(x), RESP::Array(y)) => x == y,
             (RESP::Null, RESP::Null) => true,
@@ -60,6 +62,7 @@ impl <'a> RESP<'a> {
             RESP::SimpleString(s) => format!("+{}\r\n", s),
             RESP::SimpleError(s) => format!("-{}\r\n", s),
             RESP::BulkString(s) => format!("${}\r\n{}\r\n", s.len(), s),
+            RESP::NullBulkString => "$-1\r\n".to_string(),
             RESP::Integer(i) => format!(":{}", i),
             RESP::Array(arr) =>
                 format!(
