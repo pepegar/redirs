@@ -2,15 +2,17 @@ mod protocol;
 mod interpreter;
 mod commands;
 mod expirator;
+mod replication;
 
 use commands::{CommandRequest, FromRESP, ToRESP};
-use dashmap::DashMap;
 use interpreter::Interpreter;
-use log::info;
 use protocol::RESP;
 use expirator::Expirator;
-use env_logger;
+use replication::gen_replica_id;
 
+use dashmap::DashMap;
+use log::info;
+use env_logger;
 use std::env;
 use std::str::from_utf8;
 use std::sync::Arc;
@@ -29,6 +31,7 @@ async fn main() {
 
     let mut port = "6379";
     let mut replication_role = ReplicationRole::Master;
+    let replica_id = gen_replica_id();
     info!("{args:?}");
 
     match args.as_slice() {
@@ -47,10 +50,10 @@ async fn main() {
     let (tx, rx) = mpsc::channel::<(String, Duration)>(32);
     let address = "127.0.0.1:".to_string() + port;
     let listener = TcpListener::bind(address).await.unwrap();
-    info!(target: "main", "running a {replication_role:?}, listening on port {port:?}");
+    info!(target: "main", "running as {replication_role:?}, with replica_id: {replica_id:?}, listening on port {port:?}");
     let cache = Arc::new(DashMap::new());
     let tx_protected = Arc::new(Mutex::new(tx));
-    let interpreter = Interpreter::new(replication_role, cache.clone(), tx_protected);
+    let interpreter = Interpreter::new(replica_id, replication_role, cache.clone(), tx_protected);
     let rx_protected = Arc::new(Mutex::new(rx));
     let expirator = Expirator::new(rx_protected.clone(), cache.clone());
     let expirator_clone = expirator.clone();

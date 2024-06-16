@@ -54,12 +54,12 @@ pub struct ReplicationInfo {
     repl_backlog_histlen: u64
 }
 impl ReplicationInfo {
-    pub(crate) fn new(r: ReplicationRole) -> ReplicationInfo {
+    pub(crate) fn new(role: ReplicationRole, master_replid: String, master_repl_offset: u8) -> ReplicationInfo {
         ReplicationInfo {
-            role: r,
+            role,
             connected_slaves: 0,
-            master_replid: "test".to_string(),
-            master_repl_offset: 0,
+            master_replid,
+            master_repl_offset,
             second_repl_offset: 0,
             repl_backlog_active: 0,
             repl_backlog_size: 0,
@@ -131,8 +131,8 @@ impl ToRESP for CommandResponse {
                     [
                         ["role", r.role.to_str()].join(":"),
                         ["connected_slaves", "0"].join(":"),
-                        ["master_replid", "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"].join(":"),
-                        ["master_repl_offset", "0"].join(":"),
+                        ["master_replid", r.master_replid.as_str()].join(":"),
+                        ["master_repl_offset", r.master_repl_offset.to_string().as_str()].join(":"),
                         ["second_repl_offset:", "1"].join(":"),
                         ["repl_backlog_active", "0"].join(":"),
                         ["repl_backlog_size", "1048576"].join(":"),
