@@ -8,25 +8,25 @@ use anyhow::{anyhow, Result};
 
 /// Basic datatypes for RESP protocol
 #[derive(Clone, Debug)]
-pub enum RESP<'a> {
-    SimpleString(&'a str),
-    SimpleError(&'a str),
-    BulkString(&'a str),
+pub enum RESP {
+    SimpleString(String),
+    SimpleError(String),
+    BulkString(String),
     NullBulkString,
     Integer(i64),
-    Array(Vec<RESP<'a>>),
+    Array(Vec<RESP>),
     Null,
     Boolean(bool),
     Double(f64),
     BigNumber(f64),
     BulkError(Vec<String>),
-    VerbatimString(&'a str),
-    Map(HashMap<RESP<'a>, RESP<'a>>),
-    Set(HashSet<RESP<'a>>),
-    Push(Vec<RESP<'a>>),
+    VerbatimString(String),
+    Map(HashMap<RESP, RESP>),
+    Set(HashSet<RESP>),
+    Push(Vec<RESP>),
  }
 
-impl <'a> PartialEq for RESP<'a> {
+impl PartialEq for RESP {
     fn eq(&self, other: &Self) -> bool {
         return match (self, other) {
             (RESP::SimpleString(x), RESP::SimpleString(y)) => x == y,
@@ -50,14 +50,14 @@ impl <'a> PartialEq for RESP<'a> {
 }
 
 /// RESP implementation for commands
-impl <'a> RESP<'a> {
+impl RESP {
     pub fn decode(input: &str) -> Result<RESP> {
         RESP::parse(input)
             .map_err(|err| anyhow!("parsing error: {:?}", err))
             .map(|(_, cmd)| cmd)
     }
     
-    pub fn encode(self: &RESP<'a>) -> String {
+    pub fn encode(self: &RESP) -> String {
         match self {
             RESP::SimpleString(s) => format!("+{}\r\n", s),
             RESP::SimpleError(s) => format!("-{}\r\n", s),
@@ -124,7 +124,7 @@ fn parse_bulk_str(input: &str) -> IResult<&str, RESP> {
     let (input, _) = crlf(input)?;
 
 
-    Ok((input, RESP::BulkString(data)))
+    Ok((input, RESP::BulkString(data.to_string())))
 }
 
 fn parse_integer(rest: &str) -> IResult<&str, RESP> {
@@ -134,7 +134,7 @@ fn parse_integer(rest: &str) -> IResult<&str, RESP> {
 fn parse_simple_string(input: &str) -> IResult<&str, RESP> {
     let (input, data) = take_until::<&str, &str, Error<&str>>("\r\n")(input)?;
 
-    Ok((input, RESP::SimpleString(data)))
+    Ok((input, RESP::SimpleString(data.to_string())))
 }
 
 
@@ -145,7 +145,7 @@ mod tests {
 
     #[test]
     fn test_decode_simplestring() {
-        let expected = RESP::SimpleString("hello");
+        let expected = RESP::SimpleString("hello".to_string());
         
         let string = "+hello\r\n";
 
@@ -157,7 +157,7 @@ mod tests {
 
     #[test]
     fn test_decode_bulk() {
-        let expected = RESP::BulkString("ECHO");
+        let expected = RESP::BulkString("ECHO".to_string());
         
         let string = "$4\r\nECHO\r\n";
 
@@ -171,8 +171,8 @@ mod tests {
     fn test_decode_array() {
         let expected = RESP::Array(
             vec![
-                RESP::BulkString("ECHO"),
-                RESP::BulkString("hey"),
+                RESP::BulkString("ECHO".to_string()),
+                RESP::BulkString("hey".to_string()),
             ]
         );
         
@@ -188,8 +188,8 @@ mod tests {
     fn test_encode() {
         let cmd = RESP::Array(
             vec![
-                RESP::BulkString("ECHO"),
-                RESP::BulkString("hey"),
+                RESP::BulkString("ECHO".to_string()),
+                RESP::BulkString("hey".to_string()),
             ]
         );
         
@@ -205,8 +205,8 @@ mod tests {
     fn test_roundtrip() {
         let cmd = RESP::Array(
             vec![
-                RESP::BulkString("ECHO"),
-                RESP::BulkString("hey"),
+                RESP::BulkString("ECHO".to_string()),
+                RESP::BulkString("hey".to_string()),
             ]
         );
         

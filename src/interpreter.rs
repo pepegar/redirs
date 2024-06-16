@@ -2,7 +2,7 @@ use dashmap::DashMap;
 use tokio::sync::{mpsc::Sender, Mutex, RwLock};
 use std::{collections::HashMap, sync::Arc, time::Duration};
 use anyhow::{Result, anyhow};
-use crate::commands::{CommandRequest, CommandResponse};
+use crate::commands::{CommandRequest, CommandResponse, InfoMode, ReplicationInfo};
 
 #[derive(Clone)]
 pub struct Interpreter {
@@ -35,6 +35,7 @@ impl Interpreter {
                 }
             },
             CommandRequest::DOCS => Ok(CommandResponse::DOCS),
+            CommandRequest::INFO(InfoMode::Replication) => Ok(CommandResponse::INFO(ReplicationInfo::new())),
             x => Err(anyhow!("unexpected command: {:?}", x))
         }
     }
