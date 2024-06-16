@@ -16,7 +16,7 @@ pub enum Command {
     PONG,
     ECHO(String),
     GET(String),
-    SET(String, String),
+    SET(String, String, Option<usize>),
     OK,
     STR(String),
     NIL,
@@ -34,11 +34,19 @@ impl FromRESP for Command {
                         Ok(Command::PING)
                     },
                     [RESP::BulkString("SET"), RESP::BulkString(key), RESP::BulkString(value)] => {
-                        Ok(Command::SET(key.to_string(), value.to_string()))
+                        Ok(Command::SET(key.to_string(), value.to_string(), None))
                     },
                     [RESP::BulkString("GET"), RESP::BulkString(key)] => {
                         Ok(Command::GET(key.to_string()))
                     },
+                    [RESP::BulkString("SET"),
+                     RESP::BulkString(key),
+                     RESP::BulkString(value),
+                     RESP::BulkString("px"),
+                     RESP::BulkString(expiry)] => {
+                         let expiry_long = expiry.parse::<usize>().unwrap();
+                         Ok(Command::SET(key.to_string(), value.to_string(), Some(expiry_long)))
+                     },
                     x => Err(anyhow!("unexpected RESP command: {:?}", x)),
                 }
             },
