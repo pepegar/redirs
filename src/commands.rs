@@ -20,6 +20,7 @@ pub enum Command {
     OK,
     STR(String),
     NIL,
+    DOCS,
 }
 
 impl FromRESP for Command {
@@ -27,6 +28,9 @@ impl FromRESP for Command {
         match resp {
             RESP::Array(commands) => {
                 match commands.as_slice() {
+                    [RESP::BulkString("COMMAND"), RESP::BulkString("DOCS")] => {
+                        Ok(Command::DOCS)
+                    },
                     [RESP::BulkString("ECHO"), RESP::BulkString(x)] => {
                         Ok(Command::ECHO(x.to_string()))
                     },
@@ -62,6 +66,7 @@ impl ToRESP for Command {
             Command::ECHO(x) => Ok(RESP::BulkString(x)),
             Command::OK => Ok(RESP::SimpleString("OK")),
             Command::STR(str) => Ok(RESP::BulkString(str)),
+            Command::DOCS => Ok(RESP::BulkString("welcome to redis")),
             Command::NIL => Ok(RESP::NullBulkString),
             x => Err(anyhow!("unexpected command in ToRESP: {:?}", x))
         }

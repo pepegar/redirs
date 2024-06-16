@@ -34,6 +34,7 @@ impl Interpreter {
                     None => Ok(Command::NIL),
                 }
             },
+            Command::DOCS => Ok(Command::DOCS),
             x => Err(anyhow!("unexpected command: {:?}", x))
         }
     }
