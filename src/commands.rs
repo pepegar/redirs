@@ -25,7 +25,7 @@ pub enum CommandRequest {
     INFO(InfoMode)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ReplicationRole {
     Master,
     Slave
@@ -54,9 +54,9 @@ pub struct ReplicationInfo {
     repl_backlog_histlen: u64
 }
 impl ReplicationInfo {
-    pub(crate) fn new() -> ReplicationInfo {
+    pub(crate) fn new(r: ReplicationRole) -> ReplicationInfo {
         ReplicationInfo {
-            role: ReplicationRole::Master,
+            role: r,
             connected_slaves: 0,
             master_replid: "test".to_string(),
             master_repl_offset: 0,

@@ -1,11 +1,12 @@
 use dashmap::DashMap;
-use tokio::sync::{mpsc::Sender, Mutex, RwLock};
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use tokio::sync::{mpsc::Sender, Mutex};
+use std::{sync::Arc, time::Duration};
 use anyhow::{Result, anyhow};
-use crate::commands::{CommandRequest, CommandResponse, InfoMode, ReplicationInfo};
+use crate::commands::{CommandRequest, CommandResponse, InfoMode, ReplicationInfo, ReplicationRole};
 
 #[derive(Clone)]
 pub struct Interpreter {
+    role: ReplicationRole,
     cache: Arc<DashMap<String, String>>,
     tx: Arc<Mutex<Sender<(String, Duration)>>>,
 }
@@ -35,15 +36,16 @@ impl Interpreter {
                 }
             },
             CommandRequest::DOCS => Ok(CommandResponse::DOCS),
-            CommandRequest::INFO(InfoMode::Replication) => Ok(CommandResponse::INFO(ReplicationInfo::new())),
+            CommandRequest::INFO(InfoMode::Replication) => Ok(CommandResponse::INFO(ReplicationInfo::new(self.role.clone()))),
             x => Err(anyhow!("unexpected command: {:?}", x))
         }
     }
 
     pub(crate) fn new(
+        role: ReplicationRole,
         cache: Arc<DashMap<String, String>>,
         tx: Arc<Mutex<Sender<(String, Duration)>>>
     ) -> Interpreter {
-        Interpreter{ cache, tx }
+        Interpreter{ role, cache, tx }
     }
 }

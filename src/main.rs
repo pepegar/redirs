@@ -19,6 +19,8 @@ use tokio::sync::{mpsc, Mutex};
 use tokio::net::TcpListener;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
+use crate::commands::ReplicationRole;
+
 
 #[tokio::main]
 async fn main() {
@@ -26,19 +28,29 @@ async fn main() {
     let args: Vec<String> = env::args().collect();
 
     let mut port = "6379";
+    let mut replication_role = ReplicationRole::Master;
+    info!("{args:?}");
 
     match args.as_slice() {
         [_, flag, p] if flag == "--port" => port = p,
+        [_, r_flag, r, p_flag, p] if p_flag == "--port" && r_flag == "--replicaof" => {
+            port = p;
+            replication_role = ReplicationRole::Slave;
+        },
+        [_, p_flag, p, r_flag, r] if p_flag == "--port" && r_flag == "--replicaof" => {
+            port = p;
+            replication_role = ReplicationRole::Slave;
+        },
         _ => ()
     }
 
     let (tx, rx) = mpsc::channel::<(String, Duration)>(32);
     let address = "127.0.0.1:".to_string() + port;
     let listener = TcpListener::bind(address).await.unwrap();
-    info!(target: "main", "listening on port {port:?}");
+    info!(target: "main", "running a {replication_role:?}, listening on port {port:?}");
     let cache = Arc::new(DashMap::new());
     let tx_protected = Arc::new(Mutex::new(tx));
-    let interpreter = Interpreter::new(cache.clone(), tx_protected);
+    let interpreter = Interpreter::new(replication_role, cache.clone(), tx_protected);
     let rx_protected = Arc::new(Mutex::new(rx));
     let expirator = Expirator::new(rx_protected.clone(), cache.clone());
     let expirator_clone = expirator.clone();
