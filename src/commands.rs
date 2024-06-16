@@ -14,7 +14,12 @@ pub trait ToRESP {
 pub enum Command {
     PING,
     PONG,
-    ECHO(String)
+    ECHO(String),
+    GET(String),
+    SET(String, String),
+    OK,
+    STR(String),
+    NIL,
 }
 
 impl FromRESP for Command {
@@ -28,7 +33,13 @@ impl FromRESP for Command {
                     [RESP::BulkString("PING") | RESP::SimpleString("PING")] => {
                         Ok(Command::PING)
                     },
-                    _ => todo!(),
+                    [RESP::BulkString("SET"), RESP::BulkString(key), RESP::BulkString(value)] => {
+                        Ok(Command::SET(key.to_string(), value.to_string()))
+                    },
+                    [RESP::BulkString("GET"), RESP::BulkString(key)] => {
+                        Ok(Command::GET(key.to_string()))
+                    },
+                    x => Err(anyhow!("unexpected RESP command: {:?}", x)),
                 }
             },
             x => Err(anyhow!("unexpected RESP command: {:?}", x))
@@ -41,6 +52,9 @@ impl ToRESP for Command {
         match self {
             Command::PONG => Ok(RESP::BulkString("PONG")),
             Command::ECHO(x) => Ok(RESP::BulkString(x)),
+            Command::OK => Ok(RESP::SimpleString("OK")),
+            Command::STR(str) => Ok(RESP::BulkString(str)),
+            Command::NIL => Ok(RESP::Null),
             x => Err(anyhow!("unexpected command in ToRESP: {:?}", x))
         }
     }

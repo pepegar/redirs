@@ -70,7 +70,7 @@ impl <'a> RESP<'a> {
                         |acc, curr| acc + curr.encode().as_str()
                     )
                 ),
-            RESP::Null => todo!(),
+            RESP::Null => "_\r\n".to_string(),
             RESP::Boolean(_) => todo!(),
             RESP::Double(_) => todo!(),
             RESP::BigNumber(_) => todo!(),
