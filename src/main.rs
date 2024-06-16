@@ -11,10 +11,11 @@ use protocol::RESP;
 use expirator::Expirator;
 use env_logger;
 
+use std::env;
 use std::str::from_utf8;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::{mpsc, Mutex, RwLock};
+use tokio::sync::{mpsc, Mutex};
 use tokio::net::TcpListener;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -22,9 +23,19 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 #[tokio::main]
 async fn main() {
     env_logger::init();
-    
+    let args: Vec<String> = env::args().collect();
+
+    let mut port = "6379";
+
+    match args.as_slice() {
+        [_, flag, p] if flag == "--port" => port = p,
+        _ => ()
+    }
+
     let (tx, rx) = mpsc::channel::<(String, Duration)>(32);
-    let listener = TcpListener::bind("127.0.0.1:6379").await.unwrap();
+    let address = "127.0.0.1:".to_string() + port;
+    let listener = TcpListener::bind(address).await.unwrap();
+    info!(target: "main", "listening on port {port:?}");
     let cache = Arc::new(DashMap::new());
     let tx_protected = Arc::new(Mutex::new(tx));
     let interpreter = Interpreter::new(cache.clone(), tx_protected);
