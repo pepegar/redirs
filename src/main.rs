@@ -3,12 +3,14 @@ mod interpreter;
 mod commands;
 mod expirator;
 mod replication;
+mod stream;
 
 use commands::{CommandRequest, FromRESP, ToRESP};
 use interpreter::Interpreter;
 use protocol::RESP;
 use expirator::Expirator;
-use replication::gen_replica_id;
+use replication::{gen_replica_id, Replicator};
+use stream::CommandStream;
 
 use dashmap::DashMap;
 use log::info;
@@ -31,6 +33,7 @@ async fn main() {
 
     let mut port = "6379";
     let mut replication_role = ReplicationRole::Master;
+    let mut replica_of = None;
     let replica_id = gen_replica_id();
     info!("{args:?}");
 
@@ -39,10 +42,14 @@ async fn main() {
         [_, r_flag, r, p_flag, p] if p_flag == "--port" && r_flag == "--replicaof" => {
             port = p;
             replication_role = ReplicationRole::Slave;
+            let parts: Vec<&str> = r.split(' ').collect();
+            replica_of = Some(format!("{}:{}", parts[0], parts[1]))
         },
         [_, p_flag, p, r_flag, r] if p_flag == "--port" && r_flag == "--replicaof" => {
             port = p;
             replication_role = ReplicationRole::Slave;
+            let parts: Vec<&str> = r.split(' ').collect();
+            replica_of = Some(format!("{}:{}", parts[0], parts[1]))
         },
         _ => ()
     }
@@ -62,44 +69,30 @@ async fn main() {
         info!(target: "main", "running expirator");
         expirator_clone.listen().await;
     });
+
+    match replica_of {
+        Some(master_address) => {
+            let replicator = Replicator::new(master_address);
+            tokio::spawn(async move {
+                replicator.replicate().await
+            });
+        },
+        None => (),
+    }
     
     loop {
-        let stream = listener.accept().await;
-        match stream {
-            Ok((mut stream, _)) => {
-                info!(target: "main", "receiving request");
-                let interp_clone = interpreter.clone();
-                tokio::spawn(async move {
-                    let mut buf = [0; 512];
-                    loop {
-                        let read_count = stream.read(&mut buf).await.unwrap();
-                        if read_count == 0 {
-                            break;
-                        }
-
-                        let str = from_utf8(&buf).unwrap();
-
-                        let resp = RESP::decode(str).unwrap();
-                        let command = CommandRequest::from_resp(resp).unwrap();
-
-                        info!(target: "main", "parsed as command: {command:?}");
-                        
-                        stream.write(
-                            interp_clone
-                                .respond(command)
-                                .await
-                                .unwrap()
-                                .to_resp()
-                                .unwrap()
-                                .encode()
-                                .as_bytes()
-                        ).await.unwrap();
-                    }
-                });
-            },
-            Err(e) => {
-                println!("error: {}", e);
+        let stream = listener.accept().await.unwrap().0;
+        info!(target: "main", "receiving request");
+        let mut server_stream = CommandStream::from_tcp_stream(stream);
+        let interp_clone = interpreter.clone();
+        tokio::spawn(async move {
+            loop {
+                let command = server_stream.receive_request().await.unwrap();
+                info!(target: "main", "parsed as command: {command:?}");
+                let command_response = interp_clone.respond(command).await.unwrap();
+                info!(target: "main", "answering with : {command_response:?}");
+                let _ = server_stream.write_response(command_response).await.unwrap();
             }
-        }
+        });
     }
 }

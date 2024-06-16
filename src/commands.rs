@@ -145,3 +145,21 @@ impl ToRESP for CommandResponse {
         }
     }
 }
+
+impl ToRESP for CommandRequest {
+    fn to_resp(self: &Self) -> Result<RESP> {
+        match self {
+            CommandRequest::PING => Ok(
+                RESP::Array(
+                    vec![
+                        RESP::BulkString("PING".to_string())                 ]
+                )
+            ),
+            CommandRequest::ECHO(_) => todo!(),
+            CommandRequest::GET(_) => todo!(),
+            CommandRequest::SET(_, _, _) => todo!(),
+            CommandRequest::DOCS => todo!(),
+            CommandRequest::INFO(_) => todo!(),
+        }
+    }
+}
