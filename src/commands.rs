@@ -3,7 +3,7 @@ use anyhow::{Result, anyhow};
 use crate::protocol::RESP;
 
 pub trait FromRESP {
-    fn from_resp(resp: RESP) -> Result<Command>;
+    fn from_resp(resp: RESP) -> Result<CommandRequest>;
 }
 
 pub trait ToRESP {
@@ -11,37 +11,44 @@ pub trait ToRESP {
 }
 
 #[derive(Debug)]
-pub enum Command {
+pub enum CommandRequest {
     PING,
-    PONG,
     ECHO(String),
     GET(String),
     SET(String, String, Option<u64>),
-    OK,
     STR(String),
-    NIL,
     DOCS,
 }
 
-impl FromRESP for Command {
-    fn from_resp(resp: RESP) -> Result<Command> {
+#[derive(Debug)]
+pub enum CommandResponse {
+    PONG,
+    ECHO(String),
+    OK,
+    STR(String),
+    DOCS,
+    NIL,
+}
+
+impl FromRESP for CommandRequest {
+    fn from_resp(resp: RESP) -> Result<CommandRequest> {
         match resp {
             RESP::Array(commands) => {
                 match commands.as_slice() {
                     [RESP::BulkString("COMMAND"), RESP::BulkString("DOCS")] => {
-                        Ok(Command::DOCS)
+                        Ok(CommandRequest::DOCS)
                     },
                     [RESP::BulkString("ECHO"), RESP::BulkString(x)] => {
-                        Ok(Command::ECHO(x.to_string()))
+                        Ok(CommandRequest::ECHO(x.to_string()))
                     },
                     [RESP::BulkString("PING") | RESP::SimpleString("PING")] => {
-                        Ok(Command::PING)
+                        Ok(CommandRequest::PING)
                     },
                     [RESP::BulkString("SET"), RESP::BulkString(key), RESP::BulkString(value)] => {
-                        Ok(Command::SET(key.to_string(), value.to_string(), None))
+                        Ok(CommandRequest::SET(key.to_string(), value.to_string(), None))
                     },
                     [RESP::BulkString("GET"), RESP::BulkString(key)] => {
-                        Ok(Command::GET(key.to_string()))
+                        Ok(CommandRequest::GET(key.to_string()))
                     },
                     [RESP::BulkString("SET"),
                      RESP::BulkString(key),
@@ -49,7 +56,7 @@ impl FromRESP for Command {
                      RESP::BulkString("px"),
                      RESP::BulkString(expiry)] => {
                          let expiry_long = expiry.parse::<u64>().unwrap();
-                         Ok(Command::SET(key.to_string(), value.to_string(), Some(expiry_long)))
+                         Ok(CommandRequest::SET(key.to_string(), value.to_string(), Some(expiry_long)))
                      },
                     x => Err(anyhow!("unexpected RESP command: {:?}", x)),
                 }
@@ -59,15 +66,15 @@ impl FromRESP for Command {
     }
 }
 
-impl ToRESP for Command {
+impl ToRESP for CommandResponse {
     fn to_resp(self: &Self) -> Result<RESP> {
         match self {
-            Command::PONG => Ok(RESP::BulkString("PONG")),
-            Command::ECHO(x) => Ok(RESP::BulkString(x)),
-            Command::OK => Ok(RESP::SimpleString("OK")),
-            Command::STR(str) => Ok(RESP::BulkString(str)),
-            Command::DOCS => Ok(RESP::BulkString("welcome to redis")),
-            Command::NIL => Ok(RESP::NullBulkString),
+            CommandResponse::PONG => Ok(RESP::BulkString("PONG")),
+            CommandResponse::ECHO(x) => Ok(RESP::BulkString(x)),
+            CommandResponse::OK => Ok(RESP::SimpleString("OK")),
+            CommandResponse::STR(str) => Ok(RESP::BulkString(str)),
+            CommandResponse::DOCS => Ok(RESP::BulkString("welcome to redis")),
+            CommandResponse::NIL => Ok(RESP::NullBulkString),
             x => Err(anyhow!("unexpected command in ToRESP: {:?}", x))
         }
     }

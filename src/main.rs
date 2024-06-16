@@ -3,7 +3,7 @@ mod interpreter;
 mod commands;
 mod expirator;
 
-use commands::{Command, FromRESP, ToRESP};
+use commands::{CommandRequest, FromRESP, ToRESP};
 use dashmap::DashMap;
 use interpreter::Interpreter;
 use log::info;
@@ -65,7 +65,7 @@ async fn main() {
                         let str = from_utf8(&buf).unwrap();
 
                         let resp = RESP::decode(str).unwrap();
-                        let command = Command::from_resp(resp).unwrap();
+                        let command = CommandRequest::from_resp(resp).unwrap();
 
                         info!(target: "main", "parsed as command: {command:?}");
                         

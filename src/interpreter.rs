@@ -2,7 +2,7 @@ use dashmap::DashMap;
 use tokio::sync::{mpsc::Sender, Mutex, RwLock};
 use std::{collections::HashMap, sync::Arc, time::Duration};
 use anyhow::{Result, anyhow};
-use crate::commands::Command;
+use crate::commands::{CommandRequest, CommandResponse};
 
 #[derive(Clone)]
 pub struct Interpreter {
@@ -11,11 +11,11 @@ pub struct Interpreter {
 }
 
 impl Interpreter {
-    pub async fn respond(self: &Self, cmd: Command) -> Result<Command> {
+    pub async fn respond(self: &Self, cmd: CommandRequest) -> Result<CommandResponse> {
         match cmd {
-            Command::PING => Ok(Command::PONG),
-            Command::ECHO(x) => Ok(Command::ECHO(x)),
-            Command::SET(key, value, expiry) => {
+            CommandRequest::PING => Ok(CommandResponse::PONG),
+            CommandRequest::ECHO(x) => Ok(CommandResponse::ECHO(x)),
+            CommandRequest::SET(key, value, expiry) => {
                 self.cache.insert(key.clone(), value);
 
                 match expiry {
@@ -26,15 +26,15 @@ impl Interpreter {
                     None => (),
                 }
                 
-                Ok(Command::OK)
+                Ok(CommandResponse::OK)
             },
-            Command::GET(key) => {
+            CommandRequest::GET(key) => {
                 match self.cache.get(key.as_str()) {
-                    Some(value) => Ok(Command::STR(value.to_owned())),
-                    None => Ok(Command::NIL),
+                    Some(value) => Ok(CommandResponse::STR(value.to_owned())),
+                    None => Ok(CommandResponse::NIL),
                 }
             },
-            Command::DOCS => Ok(Command::DOCS),
+            CommandRequest::DOCS => Ok(CommandResponse::DOCS),
             x => Err(anyhow!("unexpected command: {:?}", x))
         }
     }
